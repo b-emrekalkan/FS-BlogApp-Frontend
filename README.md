@@ -67,6 +67,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 export const toastWarnNotify = (msg) => {
   toast.warn(msg, {
+    position: "bottom-right",
     autoClose: 3000,
     hideProgressBar: false,
     closeOnClick: true,
@@ -78,6 +79,7 @@ export const toastWarnNotify = (msg) => {
 
 export const toastSuccessNotify = (msg) => {
   toast.success(msg, {
+    position: "bottom-right",
     autoClose: 3000,
     hideProgressBar: false,
     closeOnClick: true,
@@ -89,6 +91,7 @@ export const toastSuccessNotify = (msg) => {
 
 export const toastErrorNotify = (msg) => {
   toast.error(msg, {
+    position: "bottom-right",
     autoClose: 4000,
     hideProgressBar: false,
     closeOnClick: true,
@@ -912,4 +915,281 @@ const Login = () => {
 }
 
 export default Login
+```
+
+## 🚩 Create "BlogContext.jsx" file under "context" folder 👇
+
+```javascript
+import axios from "axios";
+import { createContext, useState } from "react";
+import { toastErrorNotify, toastSuccessNotify } from "../helper/ToastNotify";
+
+export const BlogContext = createContext();
+
+const BlogContextProvider = (props)=>{
+
+    const [blogs, setBlogs] = useState([]);
+
+    const base_url = "http://127.0.0.1:8000/"
+
+    const getBlogs = async () => {
+
+        const blogUrl = base_url + "api/posts/"
+        try {
+            const res = await axios.get(blogUrl)
+            setBlogs(res.data.results)
+            // toastSuccessNotify('Posts fetched successfully.')
+            return res;
+        } catch (error) {
+            toastErrorNotify(error.message)
+        }
+    }
+
+    function getOneBlog(slug) {
+        const result = blogs?.filter((item) => item.slug === slug);
+        return result;
+      }
+
+    let value = {
+        blogs,
+        setBlogs,
+        getBlogs,
+        getOneBlog
+     }
+
+    return (
+        <BlogContext.Provider value={value}>
+          {props.children}
+        </BlogContext.Provider>
+      )
+}
+
+export default BlogContextProvider;
+```
+
+## 🚩 Update "app.js" 👇
+
+```javascript
+import { ToastContainer } from 'react-toastify';
+import './App.css';
+import AuthContextProvider from './context/AuthContext';
+import BlogContextProvider from './context/BlogContext';
+import AppRouter from './router/AppRouter';
+
+function App() {
+  return (
+    <div >
+      <AuthContextProvider>
+        <BlogContextProvider>
+          <AppRouter />
+          <ToastContainer />
+        </BlogContextProvider>
+      </AuthContextProvider>
+    </div>
+  );
+}
+
+export default App;
+```
+
+## 🚩 "Home.jsx" 👇
+
+```javascript
+import React, { useContext, useEffect } from 'react'
+import { AuthContext } from '../context/AuthContext';
+import { BlogContext } from '../context/BlogContext';
+import Card from '@mui/material/Card';
+import CardHeader from '@mui/material/CardHeader';
+import CardMedia from '@mui/material/CardMedia';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
+import Avatar from '@mui/material/Avatar';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import { red } from '@mui/material/colors';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import { Grid } from '@mui/material';
+import ChatOutlinedIcon from '@mui/icons-material/ChatOutlined';
+import RemoveRedEyeOutlinedIcon from '@mui/icons-material/RemoveRedEyeOutlined';
+import { useNavigate } from "react-router-dom";
+import { toastErrorNotify } from '../helper/ToastNotify';
+
+const Home = () => {
+  const { currentUser } = useContext(AuthContext)
+  console.log(currentUser);
+
+  const { getBlogs, blogs } = useContext(BlogContext)
+
+  useEffect(() => {
+    getBlogs();
+
+  }, [])
+
+  const navigate = useNavigate()
+  const openDetails = (blog) => {
+    if (!currentUser) {
+      toastErrorNotify("Login for details of blog!");
+    } else {
+      navigate(`/details/${blog}`)
+    }
+  }
+  return (
+    <div>
+      <Grid container spacing={2} justifyContent="center" sx={{ mt: 2 }}>
+        {blogs.map((blog) => (
+          <Grid item xs={12} md={6} lg={4} xl={3}>
+            <Card sx={{ maxWidth: 345, height: 457, position: "relative" }}>
+              <CardHeader
+                avatar={
+                  <Avatar alt="Emre Sharp" aria-label="blog" sx={{ bgcolor: red[500] }} />
+
+                }
+                title={blog.author}
+                subheader={blog.last_updated_date.slice(0, 10)}
+              />
+              <div style={{ cursor: "pointer" }} onClick={() => openDetails(blog.slug)}>
+
+                <CardMedia
+                  component="img"
+                  height="194"
+                  image={blog.image}
+                  alt={blog.title}
+                />
+                <CardContent>
+                  <Typography gutterBottom variant="h5" component="div">
+                    {blog.title}
+                  </Typography>
+                  <Typography sx={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    display: '-webkit-box',
+                    WebkitLineClamp: '3',
+                    WebkitBoxOrient: 'vertical',
+                  }} variant="body2" color="text.secondary">
+                    {blog.content}
+                  </Typography>
+                </CardContent>
+              </div>
+              <CardActions disableSpacing sx={{ position: "absolute", bottom: "5px", left: "5px" }}>
+                <IconButton aria-label="add to favorites">
+                  <FavoriteIcon />
+                  <Typography sx={{ marginLeft: 1 }}>
+                    {blog.like_count}
+                  </Typography>
+                </IconButton>
+                <IconButton aria-label="comment">
+                  <ChatOutlinedIcon />
+                  <Typography sx={{ marginLeft: 1 }}>
+                    {blog.comment_count}
+                  </Typography>
+                </IconButton>
+                <IconButton aria-label="view">
+                  <RemoveRedEyeOutlinedIcon />
+                  <Typography sx={{ marginLeft: 1 }}>
+                    {blog.post_view_count}
+                  </Typography>
+                </IconButton>
+              </CardActions>
+            </Card>
+
+          </Grid>))}
+      </Grid>
+
+    </div>
+  )
+}
+
+export default Home
+```
+
+## 🚩 Create "Cards.jsx" component under "components" folder 👇
+
+```javascript
+import * as React from 'react';
+import Card from '@mui/material/Card';
+import CardHeader from '@mui/material/CardHeader';
+import CardMedia from '@mui/material/CardMedia';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
+import Avatar from '@mui/material/Avatar';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import { red } from '@mui/material/colors';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import ShareIcon from '@mui/icons-material/Share';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+
+const Cards = () => {
+  return (
+    <Card sx={{ maxWidth: 345 }}>
+      <CardHeader
+        avatar={
+          <Avatar sx={{ bgcolor: red[500] }} alt='Selman' aria-label="recipe">
+
+          </Avatar>
+        }
+        action={
+          <IconButton aria-label="settings">
+            <MoreVertIcon />
+          </IconButton>
+        }
+        title="Shrimp and Chorizo Paella"
+        subheader="September 14, 2016"
+      />
+      <CardMedia
+        component="img"
+        height="194"
+        image="/static/images/cards/paella.jpg"
+        alt="Paella dish"
+      />
+      <CardContent>
+        <Typography variant="body2" color="text.secondary">
+          This impressive paella is a perfect party dish and a fun meal to cook
+          together with your guests. Add 1 cup of frozen peas along with the mussels,
+          if you like.
+        </Typography>
+      </CardContent>
+      <CardActions disableSpacing>
+        <IconButton aria-label="add to favorites">
+          <FavoriteIcon />
+        </IconButton>
+        <IconButton aria-label="like">
+          <ShareIcon />
+        </IconButton>
+        <IconButton aria-label="view">
+          <ShareIcon />
+        </IconButton>
+
+      </CardActions>
+    </Card>
+  )
+}
+
+export default Cards;
+```
+
+## 🚩 Code "PostDetails.jsx" page 👇
+
+```javascript
+import React, { useContext } from 'react'
+import { useEffect } from 'react'
+import { BlogContext } from '../context/BlogContext'
+
+const PostDetails = () => {
+  const {getOneBlog} = useContext(BlogContext)
+
+  useEffect(() => {
+    const result = getOneBlog("gezi-97263409c9")
+    console.log(result)
+  }, [])
+
+  return (
+    <div>
+      PostDetails
+    </div>
+  )
+}
+
+export default PostDetails
+
 ```

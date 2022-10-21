@@ -29,11 +29,11 @@ const Home = () => {
   }, [])
 
   const navigate = useNavigate()
-  const openDetails = (blog) => {
+  const openDetails = (slug) => {
     if (!currentUser) {
       toastErrorNotify("Login for details of blog!");
     } else {
-      navigate(`/details/${blog}`)
+      navigate(`/details/${slug}`, {state: { slug }})
     }
   }
   return (
